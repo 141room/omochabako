@@ -46,7 +46,7 @@
             padding: 25px;
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            width: 1150px;
+            width: 1200px;
             max-width: 100%;
             box-sizing: border-box;
             border: 2px solid #e2e8f0;
@@ -56,8 +56,8 @@
 
         /* 左側：外部SVGマップ表示コンテナ（ズーム・移動） */
         .map-section {
-            flex: 1.4;
-            height: 600px;
+            flex: 1.3;
+            height: 620px;
             border: 1px solid #e2e8f0;
             border-radius: 12px;
             background: #ffffff;
@@ -77,7 +77,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            pointer-events: none; /* イベントは背後のラッパーで制御するため一時無効化、JSで補正 */
+            pointer-events: none;
         }
 
         #external-map-object {
@@ -85,24 +85,25 @@
             height: 100%;
         }
 
-        /* 右側：データ管理リスト */
+        /* 右側：データ管理・パレットエリア */
         .info-section {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            height: 600px;
+            gap: 15px;
+            height: 620px;
         }
 
         .section-container {
             display: flex;
             flex-direction: column;
-            height: 70%;
+            height: 45%;
         }
-        .section-container.short { height: 30%; }
+        .section-container.short { height: 25%; }
+        .section-container.palette-box { height: 30%; }
 
         .section-title {
-            font-size: 15px;
+            font-size: 14px;
             color: #475569;
             margin: 0 0 8px 0;
             border-bottom: 2px solid var(--color-primary);
@@ -116,7 +117,7 @@
             padding-right: 5px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
         }
 
         /* リストアイテム */
@@ -124,7 +125,7 @@
             background: #f8fafc;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 6px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -133,17 +134,56 @@
             transition: all 0.15s;
         }
         .area-item:hover { border-color: #94a3b8; }
-        .area-item.has-stamp { background-color: var(--color-stamp-bg); border-color: #fecdd3; }
 
-        .area-name-text { font-weight: bold; font-size: 14px; }
-        .shareholder-text { font-size: 12px; color: #64748b; margin-top: 2px;}
-        .has-stamp .shareholder-text { color: var(--color-primary); font-weight: 500; }
+        .area-name-text { font-weight: bold; font-size: 13px; }
+        .shareholder-text { font-size: 11px; color: #64748b; margin-top: 1px;}
 
         .stamp-badges {
             display: flex;
             gap: 2px;
             color: var(--color-primary);
-            font-size: 14px;
+            font-size: 12px;
+        }
+
+        /* 🎨 カラーパレットシステム */
+        .palette-wrapper {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .current-color-bar {
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid #94a3b8;
+            background-color: #ff4d94; /* デフォルト初期色 */
+            transition: background-color 0.15s;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+
+        .color-cell {
+            aspect-ratio: 1.5;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .color-cell:hover {
+            transform: scale(1.08);
+            border-color: #475569;
+        }
+        .color-cell.selected {
+            border: 2px solid #000000;
+            box-shadow: 0 0 4px rgba(0,0,0,0.3);
         }
 
         /* 管理パネル */
@@ -152,7 +192,7 @@
             background-color: #ffffff;
             padding: 20px;
             border-radius: 12px;
-            width: 1150px;
+            width: 1200px;
             max-width: 100%;
             box-sizing: border-box;
             border: 1px solid #e2e8f0;
@@ -191,7 +231,7 @@
 <body>
 
     <h1>世界さんかく鉄道 ＆ 全国制覇オタ活マップ</h1>
-    <div class="subtitle">【操作】地図の上でホイールスクロール：拡大縮小 / ドラッグ：移動 | リストまたは地図を左クリック：スタンプ | 右クリック：株主入力</div>
+    <div class="subtitle">【操作】スクロール：拡大縮小 / ドラッグ：移動 | パネルからモードを切り替えて日本地図を操作できます</div>
 
     <div id="broadcast-area">
         <div class="map-section" id="map-section-window">
@@ -201,16 +241,25 @@
         </div>
 
         <div class="info-section">
-            <div class="section-container" style="height: 65%;">
+            <div class="section-container">
                 <h3 class="section-title" id="list-title">🗾 スタンプラリー状況</h3>
                 <div class="scroll-list" id="main-data-list">
                     </div>
             </div>
 
-            <div class="section-container short" style="height: 35%;">
+            <div class="section-container short">
                 <h3 class="section-title">✈️ 海外・特別運行エリア</h3>
                 <div class="scroll-list" id="overseas-list">
                     </div>
+            </div>
+
+            <div class="section-container palette-box">
+                <h3 class="section-title">🎨 カラーパレット（色塗りモード用）</h3>
+                <div class="palette-wrapper">
+                    <div class="current-color-bar" id="color-preview"></div>
+                    <div class="color-grid" id="color-palette-grid">
+                        </div>
+                </div>
             </div>
         </div>
     </div>
@@ -219,21 +268,21 @@
         <h3 style="margin:0 0 10px 0; color:var(--color-primary); font-size:16px;">🛠️ 配信用管理パネル</h3>
         
         <div class="mode-selector">
-            <strong>【モード切替】: </strong>
-            <button class="btn active" id="mode-pref-btn" onclick="switchMode('pref')">47都道府県モード</button>
-            <button class="btn" id="mode-region-btn" onclick="switchMode('region')">地方(9エリア)モード</button>
+            <strong>【現在のモード】: </strong>
+            <button class="btn active" id="mode-pref-btn" onclick="switchMode('pref')">47都道府県スタンプ</button>
+            <button class="btn" id="mode-region-btn" onclick="switchMode('region')">地方(9エリア)スタンプ</button>
+            <button class="btn" id="mode-paint-btn" style="background-color: #059669;" onclick="switchMode('paint')">🎨 自由色塗りモード</button>
         </div>
 
         <button class="btn btn-primary" onclick="downloadMapImage()">現在のマップを画像として保存(DL)</button>
         <button class="btn" onclick="resetZoomAndPan()">ズーム・位置をリセット</button>
         <button class="btn" onclick="addOverseasArea()">海外エリアを新規追加</button>
         <button class="btn btn-danger" onclick="resetMapData()">全データをリセット</button>
-        <p class="hint">※同一階層に「map-full.svg」が正しく配置されている必要があります。配信時はこの管理パネルをOBS側でクロップして隠してください。</p>
+        <p class="hint">※「自由色塗りモード」の時は、パレットで選択した色が都道府県や海外枠に直接塗られます。右クリックの株主入力は全モード共通です。</p>
     </div>
 
     <script>
-        // 一般的な高精度SVGマップのID群に対応するマッピング
-        // ご提示いただいたマップ内の各パスのid属性（または順番）と連動させるベース定義
+        // 47都道府県マッピング定義
         const prefList = [
             { id: "jp-1", name: "北海道", region: "hokkaido" },
             { id: "jp-2", name: "青森県", region: "tohoku" }, { id: "jp-3", name: "岩手県", region: "tohoku" },
@@ -270,34 +319,44 @@
             { id: "shikoku", name: "四国エリア" }, { id: "kyushu", name: "九州・沖縄エリア" }
         ];
 
-        let currentMode = "pref"; 
+        // 画像カラーを参考にした14色のカラーパレット
+        const paletteColors = [
+            "#000000", "#808080", "#c0c0c0", "#ffffff", "#800000",
+            "#ff0000", "#800080", "#ff00ff", "#008000", "#00ff00",
+            "#808000", "#ffff00", "#000080", "#0000ff", "#008080"
+        ];
+
+        let currentMode = "pref"; // 'pref' | 'region' | 'paint'
+        let selectedColor = "#0000ff"; // パレットの初期選択色(青)
+
         let store = {
             pref: {},
             region: {},
-            overseas: [{ id: "vietnam", name: "ベトナムエリア", count: 0, shareholder: "ー" }]
+            customColors: {}, // 自由塗りモードの色情報を保持する枠
+            overseas: [{ id: "vietnam", name: "ベトナムエリア", count: 0, shareholder: "ー", color: "" }]
         };
 
-        // 初期データ生成
-        prefList.forEach(p => { store.pref[p.id] = { count: 0, shareholder: "ー" }; });
+        // 初期構造の充填
+        prefList.forEach(p => { store.pref[p.id] = { count: 0, shareholder: "ー" }; store.customColors[p.id] = ""; });
         regionList.forEach(r => { store.region[r.id] = { count: 0, shareholder: "ー" }; });
 
-        // ズーム＆ドラッグ変数
         let scale = 1, posX = 0, posY = 0, isDragging = false, startX, startY;
         const mapWindow = document.getElementById('map-section-window');
         const mapInner = document.getElementById('map-container-inner');
         const svgObject = document.getElementById('external-map-object');
 
         window.onload = function() {
-            const saved = localStorage.getItem('sankaku_external_map_data');
+            const saved = localStorage.getItem('sankaku_paint_map_data');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
                     if(parsed.pref) store = parsed;
                     if(parsed.currentMode) currentMode = parsed.currentMode;
+                    if(parsed.selectedColor) selectedColor = parsed.selectedColor;
                 } catch(e){ console.error(e); }
             }
-
-            // 外部SVGが完全に読み込まれたタイミングでクリックイベントを注入する
+            createPaletteGrid();
+            
             svgObject.addEventListener('load', function() {
                 setupSvgInteractions();
                 setupZoomAndPan();
@@ -307,10 +366,34 @@
 
         function saveData() {
             store.currentMode = currentMode;
-            localStorage.setItem('sankaku_external_map_data', JSON.stringify(store));
+            store.selectedColor = selectedColor;
+            localStorage.setItem('sankaku_paint_map_data', JSON.stringify(store));
         }
 
-        // ズーム・パン移動の処理
+        // カラーパレットUIの組み立て
+        function createPaletteGrid() {
+            const grid = document.getElementById('color-palette-grid');
+            const preview = document.getElementById('color-preview');
+            preview.style.backgroundColor = selectedColor;
+
+            paletteColors.forEach(color => {
+                const cell = document.createElement('div');
+                cell.className = 'color-cell';
+                cell.style.backgroundColor = color;
+                if(color === selectedColor) cell.classList.add('selected');
+
+                cell.onclick = () => {
+                    document.querySelectorAll('.color-cell').forEach(c => c.classList.remove('selected'));
+                    cell.classList.add('selected');
+                    selectedColor = color;
+                    preview.style.backgroundColor = color;
+                    saveData();
+                };
+                grid.appendChild(cell);
+            });
+        }
+
+        // ズーム・移動コントロール
         function setupZoomAndPan() {
             mapWindow.addEventListener('wheel', function(e) {
                 e.preventDefault();
@@ -321,7 +404,6 @@
             }, { passive: false });
 
             mapWindow.addEventListener('mousedown', function(e) {
-                // 地図上の要素クリックと競合しないよう、ドラッグの開始判定を調整
                 if(e.button !== 0) return;
                 isDragging = true;
                 startX = e.clientX - posX;
@@ -347,41 +429,39 @@
             updateTransform();
         }
 
-        // モード変更
         function switchMode(mode) {
             currentMode = mode;
             document.getElementById('mode-pref-btn').className = `btn ${mode==='pref'?'active':''}`;
             document.getElementById('mode-region-btn').className = `btn ${mode==='region'?'active':''}`;
-            document.getElementById('list-title').textContent = mode === 'pref' ? "🗾 47都道府県スタンプラリー" : "🗾 地方広域エリアラリー";
+            document.getElementById('mode-paint-btn').className = `btn ${mode==='paint'?'active':''}`;
+            
+            const titleEl = document.getElementById('list-title');
+            if(mode === 'pref') titleEl.textContent = "🗾 47都道府県スタンプラリー";
+            if(mode === 'region') titleEl.textContent = "🗾 地方広域エリアラリー";
+            if(mode === 'paint') titleEl.textContent = "🎨 都道府県リスト (色塗り連動中)";
+            
             saveData();
             render();
         }
 
-        // SVG内部のパス要素（都道府県）にイベントを付与する
         function setupSvgInteractions() {
             const svgDoc = svgObject.contentDocument;
             if(!svgDoc) return;
 
-            // 一般的なSVG日本地図は path要素 で構成されているため、上から順番にIDを紐付け
             const paths = svgDoc.querySelectorAll('path');
             paths.forEach((path, index) => {
-                // データの47都道府県とSVGのパスを順にマッピング (map-full.svgの構造に最適化)
                 const pConfig = prefList[index];
                 if (!pConfig) return;
 
-                // 制御用のアトリビュートをパスに直接付与
                 path.setAttribute('id', pConfig.id);
                 path.setAttribute('data-region', pConfig.region);
                 path.style.cursor = 'pointer';
-                path.style.transition = 'fill 0.15s';
 
-                // マップ左クリック
                 path.addEventListener('click', function(e) {
                     e.stopPropagation();
                     handleAreaClick(pConfig.id, pConfig.region);
                 });
 
-                // マップ右クリック
                 path.addEventListener('contextmenu', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -391,15 +471,21 @@
         }
 
         function handleAreaClick(prefId, regionId) {
-            const dataObj = currentMode === 'pref' ? store.pref[prefId] : store.region[regionId];
-            dataObj.count = (dataObj.count + 1) % 6; 
+            if (currentMode === 'paint') {
+                // 色塗りモードの時はクリックされた都道府県をパレット色にする（同じ色なら白クリア）
+                store.customColors[prefId] = store.customColors[prefId] === selectedColor ? "" : selectedColor;
+            } else if (currentMode === 'pref') {
+                store.pref[prefId].count = (store.pref[prefId].count + 1) % 6;
+            } else if (currentMode === 'region') {
+                store.region[regionId].count = (store.region[regionId].count + 1) % 6;
+            }
             saveData();
             render();
         }
 
         function handleAreaRightClick(prefId, regionId, name) {
-            const dataObj = currentMode === 'pref' ? store.pref[prefId] : store.region[regionId];
-            const displayTitle = currentMode === 'pref' ? name : regionList.find(r=>r.id===regionId).name;
+            const dataObj = (currentMode === 'region') ? store.region[regionId] : store.pref[prefId];
+            const displayTitle = (currentMode === 'region') ? regionList.find(r=>r.id===regionId).name : name;
             const newName = prompt(`「${displayTitle}」の筆頭株主名を入力:`, dataObj.shareholder);
             if (newName !== null) {
                 dataObj.shareholder = newName.trim() === "" ? "ー" : newName;
@@ -408,7 +494,6 @@
             }
         }
 
-        // 地図とリストの再描画
         function render() {
             const mainList = document.getElementById('main-data-list');
             const overseasList = document.getElementById('overseas-list');
@@ -417,27 +502,38 @@
             mainList.innerHTML = '';
             overseasList.innerHTML = '';
 
-            // スタンプの強さに合わせたピンク色のカラーパレット
-            const colors = ["#f1f5f9", "#ffe4e6", "#fecdd3", "#fda4af", "#fb7185", "#f43f5e"];
+            const stampColors = ["#f1f5f9", "#ffe4e6", "#fecdd3", "#fda4af", "#fb7185", "#f43f5e"];
 
-            // 1. マップのカラーリング同期
+            // 1. マップカラーの同期
             if (svgDoc) {
                 prefList.forEach(p => {
                     const path = svgDoc.getElementById(p.id);
                     if (path) {
-                        const count = currentMode === 'pref' ? store.pref[p.id].count : store.region[p.region].count;
-                        path.style.fill = colors[count];
                         path.style.stroke = "#64748b";
                         path.style.strokeWidth = "0.4";
+                        
+                        if (currentMode === 'paint') {
+                            // 自由色塗りデータがあればそれを採用、なければ白系
+                            path.style.fill = store.customColors[p.id] || "#f1f5f9";
+                        } else {
+                            const count = currentMode === 'pref' ? store.pref[p.id].count : store.region[p.region].count;
+                            path.style.fill = stampColors[count];
+                        }
                     }
                 });
             }
 
-            // 2. 右側リストの生成
-            if (currentMode === 'pref') {
+            // 2. 右側データリストの生成
+            if (currentMode === 'pref' || currentMode === 'paint') {
                 prefList.forEach(p => {
                     const data = store.pref[p.id];
-                    mainList.appendChild(createListRow(p.name, data, () => handleAreaClick(p.id, p.region), () => handleAreaRightClick(p.id, p.region, p.name)));
+                    const row = createListRow(p.name, data, () => handleAreaClick(p.id, p.region), () => handleAreaRightClick(p.id, p.region, p.name));
+                    
+                    // 色塗りモード時にリスト側にも色見本をちょい足し
+                    if (currentMode === 'paint' && store.customColors[p.id]) {
+                        row.style.borderLeft = `5px solid ${store.customColors[p.id]}`;
+                    }
+                    mainList.appendChild(row);
                 });
             } else {
                 regionList.forEach(r => {
@@ -446,12 +542,23 @@
                 });
             }
 
-            // 海外エリア
+            // 海外エリアリストの生成
             store.overseas.forEach(ov => {
                 const row = document.createElement('div');
-                row.className = `area-item ${ov.count > 0 ? 'has-stamp' : ''}`;
+                row.className = `area-item`;
+                if(ov.count > 0) row.style.backgroundColor = "var(--color-stamp-bg)";
+                if(ov.color) row.style.borderLeft = `5px solid ${ov.color}`;
+
                 row.innerHTML = `<div><div class="area-name-text">${ov.name}</div><div class="shareholder-text">株主: ${ov.shareholder}</div></div><div class="stamp-badges">${ov.count > 0 ? "🔺".repeat(ov.count) : "未出発"}</div>`;
-                row.onclick = () => { ov.count = (ov.count + 1) % 6; saveData(); render(); };
+                
+                row.onclick = () => {
+                    if (currentMode === 'paint') {
+                        ov.color = ov.color === selectedColor ? "" : selectedColor;
+                    } else {
+                        ov.count = (ov.count + 1) % 6;
+                    }
+                    saveData(); render();
+                };
                 row.oncontextmenu = (e) => {
                     e.preventDefault();
                     const n = prompt(`「${ov.name}」の筆頭株主名:`, ov.shareholder);
@@ -463,43 +570,41 @@
 
         function createListRow(name, data, clickFn, rightClickFn) {
             const row = document.createElement('div');
-            row.className = `area-item ${data.count > 0 ? 'has-stamp' : ''}`;
-            row.innerHTML = `<div><div class="area-name-text">${name}</div><div class="shareholder-text">株主: ${data.shareholder}</div></div><div class="stamp-badges">${data.count > 0 ? "🔺".repeat(data.count) : "未出発"}</div>`;
+            row.className = `area-item`;
+            if (data.count > 0 && currentMode !== 'paint') row.style.backgroundColor = "var(--color-stamp-bg)";
+            
+            row.innerHTML = `<div><div class="area-name-text">${name}</div><div class="shareholder-text">株主: ${data.shareholder}</div></div><div class="stamp-badges">${(data.count > 0 && currentMode !== 'paint') ? "🔺".repeat(data.count) : ""}</div>`;
             row.onclick = clickFn;
             row.oncontextmenu = (e) => { e.preventDefault(); rightClickFn(); };
             return row;
         }
 
         function addOverseasArea() {
-            const name = prompt("海外・特別エリア名を入力してください（例: タイエリア）:");
+            const name = prompt("海外・特別エリア名を入力してください:");
             if (name && name.trim() !== "") {
-                store.overseas.push({ id: "custom_" + Date.now(), name: name.trim(), count: 0, shareholder: "ー" });
+                store.overseas.push({ id: "custom_" + Date.now(), name: name.trim(), count: 0, shareholder: "ー", color: "" });
                 saveData(); render();
             }
         }
 
         function resetMapData() {
-            if (confirm("本当に【全モードのデータ】を初期化しますか？")) {
-                localStorage.removeItem('sankaku_external_map_data');
-                prefList.forEach(p => { store.pref[p.id] = { count: 0, shareholder: "ー" }; });
+            if (confirm("本当に【全データをリセット】して初期化しますか？")) {
+                localStorage.removeItem('sankaku_paint_map_data');
+                prefList.forEach(p => { store.pref[p.id] = { count: 0, shareholder: "ー" }; store.customColors[p.id] = ""; });
                 regionList.forEach(r => { store.region[r.id] = { count: 0, shareholder: "ー" }; });
-                store.overseas = [{ id: "vietnam", name: "ベトナムエリア", count: 0, shareholder: "ー" }];
+                store.overseas = [{ id: "vietnam", name: "ベトナムエリア", count: 0, shareholder: "ー", color: "" }];
                 resetZoomAndPan(); switchMode("pref");
             }
         }
 
         function downloadMapImage() {
             resetZoomAndPan();
-            alert("画像生成を開始します。しばらくそのままでお待ちください。");
+            alert("進捗画像を生成します。少々お待ちください。");
             setTimeout(() => {
                 const target = document.getElementById('broadcast-area');
-                html2canvas(target, { 
-                    backgroundColor: '#ffffff', 
-                    scale: 2,
-                    useCORS: true // 外部SVGのキャプチャを許可
-                }).then(canvas => {
+                html2canvas(target, { backgroundColor: '#ffffff', scale: 2, useCORS: true }).then(canvas => {
                     const link = document.createElement('a');
-                    link.download = `さんかくツアー_確定進捗_${new Date().toISOString().slice(0,10)}.png`;
+                    link.download = `さんかく鉄道_色塗り進捗_${new Date().toISOString().slice(0,10)}.png`;
                     link.href = canvas.toDataURL(); link.click();
                 });
             }, 500);
