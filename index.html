@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>世界さんかく鉄道 ＆ 全国制覇オタ活マップ</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --color-unmarked: #444444;
+            --color-stamp1: #ffb3d9; /* 蜜璃さんかく推し色（薄） */
+            --color-stamp2: #ff4d94; /* 蜜璃さんかく推し色（濃） */
+            --text-dark: #222222;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+            font-size: 24px;
+            color: #ff4d94;
+            text-shadow: 0 0 10px rgba(255,77,148,0.5);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        /* 配信画面に映すメインエリア */
+        #broadcast-area {
+            background-color: #111;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            width: 900px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* マップ全体のグリッド構造 */
+        .map-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* 海外エリア用の独立枠 */
+        .overseas-section {
+            border-top: 2px dashed #555;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+
+        .overseas-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        /* 各エリアカードのスタイル */
+        .area-card {
+            background-color: var(--color-unmarked);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            border: 2px solid transparent;
+            color: #fff;
+        }
+
+        /* スタンプ1（薄いピンク） */
+        .area-card.stamp1 {
+            background-color: var(--color-stamp1);
+            color: var(--text-dark);
+            transform: scale(1.02);
+        }
+
+        /* スタンプ2（濃いピンク・コンプリート） */
+        .area-card.stamp2 {
+            background-color: var(--color-stamp2);
+            color: #fff;
+            font-weight: bold;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255,77,148,0.6);
+            border: 2px solid #fff;
+        }
+
+        .area-name {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .stamp-status {
+            font-size: 12px;
+            background: rgba(0,0,0,0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 6px;
+        }
+
+        .shareholder {
+            font-size: 12px;
+            font-weight: bold;
+            word-break: break-all;
+            background: rgba(255,255,255,0.15);
+            padding: 2px 4px;
+            border-radius: 4px;
+            min-height: 16px;
+        }
+        .stamp1 .shareholder {
+            background: rgba(0,0,0,0.08);
+        }
+
+        /* 管理用コントロールパネル（OBSに映らないよう下部に配置） */
+        .control-panel {
+            margin-top: 30px;
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            width: 900px;
+            max-width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #444;
+        }
+
+        .control-title {
+            font-size: 16px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #ff4d94;
+        }
+
+        .btn {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #555;
+        }
+
+        .btn-primary {
+            background-color: #ff4d94;
+        }
+
+        .btn-primary:hover {
+            background-color: #e03a80;
+        }
+
+        .btn-danger {
+            background-color: #cc3333;
+        }
+
+        .btn-danger:hover {
+            background-color: #b32d2d;
+        }
+
+        .instruction {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>世界さんかく鉄道 ＆ 全国制覇オタ活マップ</h1>
+    <div class="subtitle">左クリック：スタンプ進捗切替 | 右クリック：筆頭株主の入力</div>
+
+    <div id="broadcast-area">
+        <div class="map-container" id="japan-map">
+            </div>
+
+        <div class="overseas-section">
+            <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #ff4d94;">✈️ 海外・特別運行エリア</h3>
+            <div class="overseas-container" id="overseas-map">
+                </div>
+        </div>
+    </div>
+
+    <div class="control-panel">
+        <h3 class="control-title">🛠️ 配信用管理パネル</h3>
+        <button class="btn btn-primary" onclick="downloadMapImage()">現在のマップを画像として保存(DL)</button>
+        <button class="btn id="reset-btn" class="btn btn-danger" onclick="resetMapData()">データをすべてリセット</button>
+        <button class="btn" onclick="addOverseasArea()">海外エリアを新規追加</button>
+        <p class="instruction">※入力したデータは自動的にブラウザに保存されます。配信を閉じても次回そのまま再開可能です。</p>
+    </div>
+
+    <script>
+        // 初期エリアデータ定義
+        const defaultDomesticAreas = [
+            { id: "hokkaido", name: "北海道エリア", status: 0, shareholder: "ー" },
+            { id: "tohoku", name: "東北エリア", status: 0, shareholder: "ー" },
+            { id: "kanto", name: "関東エリア", status: 0, shareholder: "ー" },
+            { id: "chubu", name: "中部エリア", status: 0, shareholder: "ー" },
+            { id: "kansai", name: "関西エリア", status: 0, shareholder: "ー" },
+            { id: "chugoku", name: "中国エリア", status: 0, shareholder: "ー" },
+            { id: "shikoku", name: "四国エリア", status: 0, shareholder: "ー" },
+            { id: "kyushu", name: "九州・沖縄エリア", status: 0, shareholder: "ー" }
+        ];
+
+        const defaultOverseasAreas = [
+            { id: "vietnam", name: "ベトナムエリア", status: 0, shareholder: "ー" }
+        ];
+
+        let mapData = {
+            domestic: JSON.parse(JSON.stringify(defaultDomesticAreas)),
+            overseas: JSON.parse(JSON.stringify(defaultOverseasAreas))
+        };
+
+        // ローカルストレージからデータ読み込み
+        function loadData() {
+            const saved = localStorage.getItem('sankaku_map_data');
+            if (saved) {
+                try {
+                    mapData = JSON.parse(saved);
+                } catch (e) {
+                    console.error("データ読み込み失敗、初期化します", e);
+                }
+            }
+            renderMap();
+        }
+
+        // ローカルストレージにデータを保存
+        function saveData() {
+            localStorage.setItem('sankaku_map_data', JSON.stringify(mapData));
+        }
+
+        // マップの描画
+        function renderMap() {
+            const domesticContainer = document.getElementById('japan-map');
+            const overseasContainer = document.getElementById('overseas-map');
+            
+            domesticContainer.innerHTML = '';
+            overseasContainer.innerHTML = '';
+
+            // 国内の描画
+            mapData.domestic.forEach(area => {
+                domesticContainer.appendChild(createAreaCard(area, 'domestic'));
+            });
+
+            // 海外の描画
+            mapData.overseas.forEach(area => {
+                overseasContainer.appendChild(createAreaCard(area, 'overseas'));
+            });
+        }
+
+        // エリアカードのHTML要素を作成
+        function createAreaCard(area, type) {
+            const card = document.createElement('div');
+            card.className = `area-card`;
+            if (area.status === 1) card.classList.add('stamp1');
+            if (area.status === 2) card.classList.add('stamp2');
+
+            let statusText = "未出発";
+            if (area.status === 1) statusText = "🚂 スタンプ1";
+            if (area.status === 2) statusText = "🎉 運行開始！";
+
+            card.innerHTML = `
+                <div class="area-name">${area.name}</div>
+                <div class="stamp-status">${statusText}</div>
+                <div class="shareholder">株主: ${area.shareholder}</div>
+            `;
+
+            // 左クリックでスタンプ状態を変更
+            card.addEventListener('click', () => {
+                area.status = (area.status + 1) % 3;
+                saveData();
+                renderMap();
+            });
+
+            // 右クリックで筆頭株主を入力
+            card.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const newName = prompt(`「${area.name}」の筆頭株主（リスナー名）を入力してください:`, area.shareholder);
+                if (newName !== null) {
+                    area.shareholder = newName.trim() === "" ? "ー" : newName;
+                    saveData();
+                    renderMap();
+                }
+            });
+
+            return card;
+        }
+
+        // 海外エリアの追加機能
+        function addOverseasArea() {
+            const name = prompt("追加する新しいエリア名を入力してください（例: タイエリア）:");
+            if (name && name.trim() !== "") {
+                const id = "custom_" + Date.now();
+                mapData.overseas.push({ id: id, name: name.trim(), status: 0, shareholder: "ー" });
+                saveData();
+                renderMap();
+            }
+        }
+
+        // 全リセット機能
+        function resetMapData() {
+            if (confirm("本当にすべてのスタンプと株主データをリセットしてもよろしいですか？")) {
+                mapData = {
+                    domestic: JSON.parse(JSON.stringify(defaultDomesticAreas)),
+                    overseas: JSON.parse(JSON.stringify(defaultOverseasAreas))
+                };
+                saveData();
+                renderMap();
+            }
+        }
+
+        // マップを画像（PNG）としてダウンロードする機能
+        function downloadMapImage() {
+            const broadcastArea = document.getElementById('broadcast-area');
+            // 一時的に背景をきれいに写すためにオプションを設定
+            html2canvas(broadcastArea, {
+                backgroundColor: '#111111',
+                scale: 2 // 画質向上のため2倍サイズで出力
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `さんかくツアー進捗マップ_${new Date().toISOString().slice(0,10)}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        // 初期読み込み実行
+        window.onload = loadData;
+    </script>
+</body>
+</html>
