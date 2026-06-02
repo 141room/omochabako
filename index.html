@@ -59,6 +59,7 @@
 
         /* 左側：リアル日本地図表示コンテナ */
         .map-section {
+            box-sizing: border-box;
             flex: 1.3;
             height: 620px;
             border: 1px solid #e2e8f0;
@@ -75,6 +76,20 @@
             position: absolute;
             top: 0;
             left: 0;
+        }
+
+        /* 🟢 ホバー時に「ふわっと浮き上がらせる」ためのSVG内部パス用スタイル設定 */
+        #map svg path {
+            transition: transform 0.2s ease, filter 0.2s ease, fill 0.2s ease !important;
+            transform-origin: center;
+            cursor: pointer;
+        }
+
+        /* 🟢 フォーカスが当たったエリアを拡大して色を濃く見せるためのCSSクラス */
+        .sm-focus-effect {
+            filter: brightness(0.85) drop-shadow(0px 4px 8px rgba(0,0,0,0.25)) !important;
+            transform: scale(1.04) !important;
+            z-index: 999 !important;
         }
 
         /* 右側：データ管理・パレットエリア */
@@ -129,13 +144,6 @@
         .area-name-text { font-weight: bold; font-size: 13px; }
         .shareholder-text { font-size: 11px; color: #64748b; margin-top: 1px;}
 
-        .stamp-badges {
-            display: flex;
-            gap: 2px;
-            color: var(--color-primary);
-            font-size: 12px;
-        }
-
         /* 🎨 カラーパレットシステム */
         .palette-wrapper {
             background: #f8fafc;
@@ -162,7 +170,6 @@
             transition: background-color 0.15s;
         }
 
-        /* 🏠 初期状態リセットのホームボタン */
         .btn-home-zoom {
             background-color: #e2e8f0;
             border: 1px solid #cbd5e1;
@@ -246,7 +253,7 @@
 <body>
 
     <h1>世界さんかく鉄道 ＆ 全国制覇オタ活マップ</h1>
-    <div class="subtitle">【操作】地図の枠内でスクロール：マウスの位置を中心に拡大縮小 / ドラッグ：移動</div>
+    <div class="subtitle">【操作】地図の枠内でスクロール：拡大縮小 / ドラッグ：移動</div>
 
     <div id="broadcast-area">
         <div class="map-section" id="map-section-window">
@@ -269,7 +276,7 @@
                 <div class="palette-wrapper">
                     <div class="palette-header-row">
                         <div class="current-color-bar" id="color-preview"></div>
-                        <button class="btn-home-zoom" title="地図を初期状態のリセットに戻す" onclick="resetZoomAndPan()">🏠</button>
+                        <button class="btn-home-zoom" title="地図を初期状態に戻す" onclick="resetZoomAndPan()">🏠</button>
                     </div>
                     <div class="color-grid" id="color-palette-grid"></div>
                 </div>
@@ -294,7 +301,6 @@
     </div>
 
     <script>
-        // mapdata.js 内の定義「JP01〜JP47」に完全同期させたフロントデータ
         const prefList = [
             { id: "hokkaido", code: "JP01", name: "北海道", region: "hokkaido" },
             { id: "aomori", code: "JP02", name: "青森県", region: "tohoku" },
@@ -315,7 +321,7 @@
             { id: "ishikawa", code: "JP17", name: "石川県", region: "chubu" },
             { id: "fukui", code: "JP18", name: "福井県", region: "chubu" },
             { id: "yamanashi", code: "JP19", name: "山梨県", region: "chubu" },
-            { id: "nagano", code: "JP20", name: "長野県", region: "chubu" },
+            { id: "nagano", code: "JP20", name: "長野県", region: "chubu" }, 
             { id: "gifu", code: "JP21", name: "岐阜県", region: "chubu" },
             { id: "shizuoka", code: "JP22", name: "静岡県", region: "chubu" },
             { id: "aichi", code: "JP23", name: "愛知県", region: "chubu" },
@@ -369,14 +375,21 @@
         prefList.forEach(p => { store.pref[p.code] = { count: 0, shareholder: "ー" }; store.paintColors[p.code] = ""; });
         regionList.forEach(r => { store.region[r.id] = { count: 0, shareholder: "ー" }; });
 
-        // SimpleMapsのロード完了フックを利用してイベントを安全に割り当て
+        // 🟢 SimpleMapsの初期設定を変更（コア側のクリックズームを完全無効化） [cite: 44]
+        if (typeof simplemaps_countrymap_mapdata !== 'undefined') {
+            simplemaps_countrymap_mapdata.main_settings.all_states_zoomable = "no";
+            simplemaps_countrymap_mapdata.main_settings.zoom = "no"; // コアの多重スクロールを内部的に完全遮断
+        }
+
+        // 🟢 SimpleMapsのロード完了時にカスタムイベント（ホバー＆クリック）を綺麗に再フックする [cite: 44]
         simplemaps_countrymap.hooks.complete = function() {
             setupMapClickHandlers();
+            setupMapHoverHandlers(); // ふわっとエフェクトのフック
             switchMode(currentMode);
         };
 
         window.onload = function() {
-            const saved = localStorage.getItem('sankaku_simplemaps_data_v4');
+            const saved = localStorage.getItem('sankaku_simplemaps_data_v5');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -386,12 +399,13 @@
                 } catch(e){ console.error(e); }
             }
             createPaletteGrid();
+            setupNativeZoomAndPan(); // 一元化した自前のスクロールズーム
         };
 
         function saveData() {
             store.currentMode = currentMode;
             store.selectedColor = selectedColor;
-            localStorage.setItem('sankaku_simplemaps_data_v4', JSON.stringify(store));
+            localStorage.setItem('sankaku_simplemaps_data_v5', JSON.stringify(store));
         }
 
         function createPaletteGrid() {
@@ -416,11 +430,56 @@
             });
         }
 
-        // 🎯 SimpleMapsネイティブの初期縮尺バック関数を呼び出してリセット
+        // 🎯 自前の「マウスカーソル位置中心」の超高精度・高速スクロールズーム（競合ゼロ）
+        let scale = 1, posX = 0, posY = 0, isDragging = false, startX, startY;
+        const mapWindow = document.getElementById('map-section-window');
+        const mapInner = document.getElementById('map');
+
+        function setupNativeZoomAndPan() {
+            mapWindow.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                const zoomFactor = 0.12;
+                const rect = mapWindow.getBoundingClientRect();
+                
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                const svgX = (mouseX - posX) / scale;
+                const svgY = (mouseY - posY) / scale;
+
+                if (e.deltaY < 0) { scale += zoomFactor; } else { scale -= zoomFactor; }
+                scale = Math.min(Math.max(0.4, scale), 8);
+
+                posX = mouseX - svgX * scale;
+                posY = mouseY - svgY * scale;
+
+                updateTransform();
+            }, { passive: false });
+
+            mapWindow.addEventListener('mousedown', function(e) {
+                if(e.button !== 0) return;
+                isDragging = true;
+                startX = e.clientX - posX;
+                startY = e.clientY - posY;
+            });
+
+            window.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                posX = e.clientX - startX;
+                posY = e.clientY - startY;
+                updateTransform();
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+        }
+
+        function updateTransform() {
+            mapInner.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+        }
+
         function resetZoomAndPan() {
-            if (typeof simplemaps_countrymap !== 'undefined' && simplemaps_countrymap.back) {
-                simplemaps_countrymap.back();
-            }
+            scale = 1; posX = 0; posY = 0;
+            updateTransform();
         }
 
         function switchMode(mode) {
@@ -434,24 +493,54 @@
             if(mode === 'region') titleEl.textContent = "🗾 地方広域エリアラリー";
             if(mode === 'paint') titleEl.textContent = "🎨 都道府県リスト (自由塗りつぶし中)";
             
+            // モードが切り替わったら一旦すべてのホバークラスをリセット
+            document.querySelectorAll('#map path').forEach(p => p.classList.remove('sm-focus-effect'));
+            
             saveData();
             render();
         }
 
-        // countrymap.js 内で生成されたインラインSVG要素群へ安全に割り当て
+        // 🟢 都道府県・地方のモード設定に合わせた「ふわっと連動ホバー」処理
+        function setupMapHoverHandlers() {
+            prefList.forEach(p => {
+                const elements = document.querySelectorAll(`.sm_state_${p.code}`);
+                elements.forEach(el => {
+                    // マウスが入ったとき
+                    el.addEventListener('mouseover', () => {
+                        if (currentMode === 'region') {
+                            // 地方モードなら、同じ地方の県をすべて1.04倍にして色を濃くする [cite: 44]
+                            const sameRegionPrefs = prefList.filter(pref => pref.region === p.region);
+                            sameRegionPrefs.forEach(rPref => {
+                                document.querySelectorAll(`.sm_state_${rPref.code}`).forEach(path => {
+                                    path.classList.add('sm-focus-effect');
+                                });
+                            });
+                        } else {
+                            // 都道府県モード・色塗りモードなら、その県単体だけをフォーカス
+                            el.classList.add('sm-focus-effect');
+                        }
+                    });
+
+                    // マウスが離れたとき
+                    el.addEventListener('mouseout', () => {
+                        // モードに関わらず一発ですべてのフォーカスを解除
+                        document.querySelectorAll('#map path').forEach(path => {
+                            path.classList.remove('sm-focus-effect');
+                        });
+                    });
+                });
+            });
+        }
+
         function setupMapClickHandlers() {
             prefList.forEach(p => {
                 const elements = document.querySelectorAll(`.sm_state_${p.code}`);
                 elements.forEach(el => {
-                    el.style.cursor = 'pointer';
-                    
-                    // 左クリック（進捗更新 or 色塗り）
                     el.onclick = (e) => {
                         e.stopPropagation();
                         handleAreaClick(p.code, p.region);
                     };
 
-                    // 右クリック（株主入力）
                     el.oncontextmenu = (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -494,7 +583,6 @@
 
             const stampColors = ["#88a4bc", "#ffe4e6", "#fecdd3", "#fda4af", "#fb7185", "#f43f5e"];
 
-            // 1. 地図（SVG）側のパス配色をループで一括同期
             prefList.forEach(p => {
                 const elements = document.querySelectorAll(`.sm_state_${p.code}`);
                 let fillHex = "#88a4bc";
@@ -510,7 +598,6 @@
                 elements.forEach(el => el.style.fill = fillHex);
             });
 
-            // 2. 右側データリストの生成
             if (currentMode === 'pref' || currentMode === 'paint') {
                 prefList.forEach(p => {
                     const data = store.pref[p.code];
@@ -527,7 +614,6 @@
                 });
             }
 
-            // 3. 海外特別枠リストの生成
             store.overseas.forEach(ov => {
                 const row = document.createElement('div');
                 row.className = `area-item`;
@@ -574,7 +660,7 @@
 
         function resetMapData() {
             if (confirm("本当に【すべてのスタンプ・色塗りデータ】を初期化しますか？")) {
-                localStorage.removeItem('sankaku_simplemaps_data_v4');
+                localStorage.removeItem('sankaku_simplemaps_data_v5');
                 prefList.forEach(p => { store.pref[p.code] = { count: 0, shareholder: "ー" }; store.paintColors[p.code] = ""; });
                 regionList.forEach(r => { store.region[r.id] = { count: 0, shareholder: "ー" }; });
                 store.overseas = [{ id: "vietnam", name: "ベトナムエリア", count: 0, shareholder: "ー", color: "" }];
