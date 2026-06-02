@@ -132,7 +132,7 @@ var simplemaps_countrymap_mapdata={
       name: "山梨"
     },
     JP20: {
-      name: "名古屋"
+      name: "長野"
     },
     JP21: {
       name: "岐阜"
