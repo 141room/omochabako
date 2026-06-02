@@ -47,7 +47,6 @@
         #broadcast-area {
             background-color: #ffffff;
             padding: 25px;
-            border-radius: 166px;
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.05);
             width: 1250px;
@@ -70,7 +69,7 @@
             overflow: hidden;
         }
 
-        /* 外部JSによって自動展開されるコンテナスタイルを厳密に固定 */
+        /* 外部JSによって自動展開されるコンテナスタイルを固定 */
         #map {
             width: 100% !important;
             height: 100% !important;
@@ -79,13 +78,17 @@
             left: 0 !important;
         }
 
-        /* 🟢 チカチカとバグる原因だったtransformを廃止し、滑らかな高輝度化エフェクトに一本化 */
-        #map svg path {
+        /* 🟢 【ここが重要】SimpleMapsの拡大縮小の起点を、マウスカーソルが乗っている「要素の中心」へ強制的に上書き */
+        #map svg {
+            transform-origin: center !important;
+        }
+
+        #map svg path, #map svg polygon {
             transition: fill 0.15s ease, filter 0.15s ease, stroke 0.15s ease !important;
             cursor: pointer;
         }
 
-        /* 🟢 ホバー時にバグを一切起こさず、配信画面で最も見やすくなるフォーカスエフェクト設定 */
+        /* ホバー時のフォーカスエフェクト設定 */
         .sm-focus-effect {
             filter: brightness(1.2) !important;
             stroke: #ffffff !important;
@@ -368,7 +371,7 @@
         const paletteColors = [
             "#000000", "#808080", "#c0c0c0", "#ffffff", "#800000",
             "#ff0000", "#800080", "#ff00ff", "#008000", "#00ff00",
-            "#808000", "#ffff00", "#000080", "#0000ff", "#008080"
+            "#808000", "#ffff00", "#000080", "#0000ff", "#008000"
         ];
 
         let currentMode = "pref"; 
@@ -382,26 +385,20 @@
         prefList.forEach(p => { store.pref[p.code] = { count: 0, shareholder: "ー" }; store.paintColors[p.code] = ""; });
         regionList.forEach(r => { store.region[r.id] = { count: 0, shareholder: "ー" }; });
 
-        // 🟢 SimpleMapsの初期設定を変更（コア側のクリックズーム、多重ホイール、及びデフォルト移動を「完全遮断」）
+        // 🟢 【重要】SimpleMapsコアの標準スクロールズームを「許可(yes)」に変更（二重化バグを完全に防ぐ）
         if (typeof simplemaps_countrymap_mapdata !== 'undefined') {
-            simplemaps_countrymap_mapdata.main_settings.all_states_zoomable = "no";
-            simplemaps_countrymap_mapdata.main_settings.zoom = "no"; 
+            simplemaps_countrymap_mapdata.main_settings.all_states_zoomable = "no"; 
+            simplemaps_countrymap_mapdata.main_settings.zoom = "yes"; // 1重の綺麗な純正ズームのみを許可
         }
 
-        // 🟢 ロード完了フックを上書き。拡大縮小ボタン（Raphael要素）が作成されて配置が確定した後に実行
         simplemaps_countrymap.hooks.complete = function() {
             setupMapClickHandlers();
             setupMapHoverHandlers(); 
             switchMode(currentMode);
-            
-            // 🟢 画像のズレ（左上へのトビ）を完全に防ぐための初期位置補正
-            setTimeout(() => {
-                resetZoomAndPan();
-            }, 100);
         };
 
         window.onload = function() {
-            const saved = localStorage.getItem('sankaku_simplemaps_data_v6');
+            const saved = localStorage.getItem('sankaku_simplemaps_data_v7');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -411,13 +408,12 @@
                 } catch(e){ console.error(e); }
             }
             createPaletteGrid();
-            setupNativeZoomAndPan(); // 競合を起こさないクリーンな縮小拡大ロジック
         };
 
         function saveData() {
             store.currentMode = currentMode;
             store.selectedColor = selectedColor;
-            localStorage.setItem('sankaku_simplemaps_data_v6', JSON.stringify(store));
+            localStorage.setItem('sankaku_simplemaps_data_v7', JSON.stringify(store));
         }
 
         function createPaletteGrid() {
@@ -442,58 +438,11 @@
             });
         }
 
-        // 🎯 マウスカーソル位置を正確に起点にする、HTML/CSS直結型の拡大縮小・ドラッグ処理
-        let scale = 1, posX = 0, posY = 0, isDragging = false, startX, startY;
-        const mapWindow = document.getElementById('map-section-window');
-        const mapInner = document.getElementById('map');
-
-        function setupNativeZoomAndPan() {
-            mapWindow.addEventListener('wheel', function(e) {
-                e.preventDefault();
-                const zoomFactor = 0.12;
-                const rect = mapWindow.getBoundingClientRect();
-                
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-
-                const svgX = (mouseX - posX) / scale;
-                const svgY = (mouseY - posY) / scale;
-
-                if (e.deltaY < 0) { scale += zoomFactor; } else { scale -= zoomFactor; }
-                scale = Math.min(Math.max(0.4, scale), 8);
-
-                posX = mouseX - svgX * scale;
-                posY = mouseY - svgY * scale;
-
-                updateTransform();
-            }, { passive: false });
-
-            mapWindow.addEventListener('mousedown', function(e) {
-                // ボタン類とのクリック競合を防ぐため、一番外側の要素（DIV）のみドラッグ対象にする
-                if(e.button !== 0 || e.target.tagName === 'path' || e.target.tagName === 'circle') return;
-                isDragging = true;
-                startX = e.clientX - posX;
-                startY = e.clientY - posY;
-            });
-
-            window.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-                posX = e.clientX - startX;
-                posY = e.clientY - startY;
-                updateTransform();
-            });
-
-            window.addEventListener('mouseup', () => { isDragging = false; });
-        }
-
-        function updateTransform() {
-            mapInner.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
-        }
-
-        // 🏠 画面全体のズーム・座標のズレを綺麗に最初の初期位置に戻す処理
+        // 🏠 地図全体の倍率と位置を、最初の初期状態へ一発できれいに戻す処理
         function resetZoomAndPan() {
-            scale = 1; posX = 0; posY = 0;
-            updateTransform();
+            if (typeof simplemaps_countrymap !== 'undefined' && simplemaps_countrymap.back) {
+                simplemaps_countrymap.back(); // コアの純正位置リセット関数をコール
+            }
         }
 
         function switchMode(mode) {
@@ -507,37 +456,31 @@
             if(mode === 'region') titleEl.textContent = "🗾 地方広域エリアラリー";
             if(mode === 'paint') titleEl.textContent = "🎨 都道府県リスト (自由塗りつぶし中)";
             
-            // モード切替時に残存しているホバー用のクラスを全削除
             document.querySelectorAll('#map path, #map polygon').forEach(p => p.classList.remove('sm-focus-effect'));
             
             saveData();
             render();
         }
 
-        // 🟢 チカチカする激しい明滅を100%防ぎつつ、エリアに正確にフォーカスを当てる超軽量ロジック
         function setupMapHoverHandlers() {
             prefList.forEach(p => {
                 const elements = document.querySelectorAll(`.sm_state_${p.code}`);
                 elements.forEach(el => {
-                    // 各県のパス(polygonやpath)そのものに対して処理を割り当てる
                     const paths = el.querySelectorAll('path, polygon');
                     
                     el.addEventListener('mouseenter', () => {
                         if (currentMode === 'region') {
-                            // 地方モードなら、同じ地方に属するすべての県の全パスを輝かせる
                             const sameRegionPrefs = prefList.filter(pref => pref.region === p.region);
                             sameRegionPrefs.forEach(rPref => {
                                 const targetPaths = document.querySelectorAll(`.sm_state_${rPref.code} path, .sm_state_${rPref.code} polygon`);
                                 targetPaths.forEach(path => path.classList.add('sm-focus-effect'));
                             });
                         } else {
-                            // 都道府県・色塗りモードなら、その県に属する全パスのみ輝かせる
                             paths.forEach(path => path.classList.add('sm-focus-effect'));
                         }
                     });
 
                     el.addEventListener('mouseleave', () => {
-                        // マウスアウト時は、バグを防ぐため無条件で全パスのフォーカスを解除
                         document.querySelectorAll('#map path, #map polygon').forEach(path => {
                             path.classList.remove('sm-focus-effect');
                         });
@@ -649,7 +592,7 @@
                 };
                 row.oncontextmenu = (e) => {
                     e.preventDefault();
-                    const n = prompt(`「${ov.name}」の筆頭株主名:`, ov.shareholder);
+                    const n = prompt(`「${ov.name}」の筆先株主名:`, ov.shareholder);
                     if(n !== null){ ov.shareholder = n.trim()===""?"ー":n; saveData(); render(); }
                 };
                 overseasList.appendChild(row);
@@ -677,7 +620,7 @@
 
         function resetMapData() {
             if (confirm("本当に【すべてのスタンプ・色塗りデータ】を初期化しますか？")) {
-                localStorage.removeItem('sankaku_simplemaps_data_v6');
+                localStorage.removeItem('sankaku_simplemaps_data_v7');
                 prefList.forEach(p => { store.pref[p.code] = { count: 0, shareholder: "ー" }; store.paintColors[p.code] = ""; });
                 regionList.forEach(r => { store.region[r.id] = { count: 0, shareholder: "ー" }; });
                 store.overseas = [{ id: "vietnam", name: "ベトナムエリア", count: 0, shareholder: "ー", color: "" }];
