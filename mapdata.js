@@ -219,7 +219,7 @@ var simplemaps_countrymap_mapdata={
   locations: {},
   labels: {
     JP01: {
-      name: "北海道",
+      name: "",
       parent_id: "JP01"
     },
     JP02: {
