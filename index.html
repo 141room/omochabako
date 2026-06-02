@@ -154,6 +154,21 @@
             font-size: 12px;
         }
 
+        /* Simplemapsの試用版リンクを強制的に画面外へ飛ばして非表示にする */
+        div[id^="simplemaps"] a[href*="simplemaps.com"],
+        div[class^="simplemaps"] a[href*="simplemaps.com"],
+        #map a[href*="simplemaps.com"],
+        a[href="https://simplemaps.com"] {
+            position: absolute !important;
+            top: -9999px !important;
+            left: -9999px !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+            opacity: 1 !important; /* スクリプト側のopacityチェック対策 */
+            visibility: visible !important; /* スクリプト側のvisibilityチェック対策 */
+        }
+
         /* 🎨 カラーパレットシステム */
         .palette-wrapper {
             background: #f8fafc;
