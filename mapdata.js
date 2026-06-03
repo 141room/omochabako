@@ -224,7 +224,9 @@ var simplemaps_countrymap_mapdata={
     },
     JP02: {
       name: "青森",
-      parent_id: "JP02"
+      parent_id: "JP02",
+      x: 622,
+      y: 265
     },
     JP03: {
       name: "岩手",
@@ -268,7 +270,9 @@ var simplemaps_countrymap_mapdata={
     },
     JP13: {
       name: "東京",
-      parent_id: "JP13"
+      parent_id: "JP13",
+      x: 590,
+      y: 432
     },
     JP14: {
       name: "神奈川",
@@ -276,7 +280,9 @@ var simplemaps_countrymap_mapdata={
     },
     JP15: {
       name: "新潟",
-      parent_id: "JP15"
+      parent_id: "JP15",
+      x: 575,
+      y: 368
     },
     JP16: {
       name: "富山",
