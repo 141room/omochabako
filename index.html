@@ -69,6 +69,7 @@
             overflow: hidden;
         }
 
+        /* 外部JSによって自動展開されるコンテナスタイルを固定 */
         #map {
             width: 100% !important;
             height: 100% !important;
@@ -77,7 +78,7 @@
             left: 0 !important;
         }
 
-        /* 拡大縮小の起点を中央に固定 */
+        /* 🟢 【ここが重要】SimpleMapsの拡大縮小の起点を、マウスカーソルが乗っている「要素の中心」へ強制的に上書き */
         #map svg {
             transform-origin: center !important;
         }
@@ -92,16 +93,6 @@
             filter: brightness(1.2) !important;
             stroke: #ffffff !important;
             stroke-width: 3px !important;
-        }
-
-        /* 🟢 強制注入した小さな都道府県の文字用スタイル（SimpleMapsの標準フォントに同調） */
-        .sm_forced_label {
-            font-family: Arial, sans-serif !important;
-            font-size: 13px !important;
-            font-weight: bold !important;
-            fill: #ffffff !important;
-            pointer-events: none !important; /* マウスイベントを透過させて地図のクリックを邪魔しない */
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
         }
 
         /* 右側：データ管理・パレットエリア */
@@ -161,6 +152,21 @@
             gap: 2px;
             color: var(--color-primary);
             font-size: 12px;
+        }
+
+        /* Simplemapsの試用版リンクを強制的に画面外へ飛ばして非表示にする */
+        div[id^="simplemaps"] a[href*="simplemaps.com"],
+        div[class^="simplemaps"] a[href*="simplemaps.com"],
+        #map a[href*="simplemaps.com"],
+        a[href="https://simplemaps.com"] {
+            position: absolute !important;
+            top: -9999px !important;
+            left: -9999px !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+            opacity: 1 !important; /* スクリプト側のopacityチェック対策 */
+            visibility: visible !important; /* スクリプト側のvisibilityチェック対策 */
         }
 
         /* 🎨 カラーパレットシステム */
@@ -380,7 +386,7 @@
         const paletteColors = [
             "#000000", "#808080", "#c0c0c0", "#ffffff", "#800000",
             "#ff0000", "#800080", "#ff00ff", "#008000", "#00ff00",
-            "#808000", "#ffff00", "#000080", "#0000ff", "#008080"
+            "#808000", "#ffff00", "#000080", "#0000ff", "#008000"
         ];
 
         let currentMode = "pref"; 
@@ -394,21 +400,20 @@
         prefList.forEach(p => { store.pref[p.code] = { count: 0, shareholder: "ー" }; store.paintColors[p.code] = ""; });
         regionList.forEach(r => { store.region[r.id] = { count: 0, shareholder: "ー" }; });
 
-        // SimpleMapsコア側の自動処理を上書き
+        // 🟢 【重要】SimpleMapsコアの標準スクロールズームを「許可(yes)」に変更（二重化バグを完全に防ぐ）
         if (typeof simplemaps_countrymap_mapdata !== 'undefined') {
             simplemaps_countrymap_mapdata.main_settings.all_states_zoomable = "no"; 
-            simplemaps_countrymap_mapdata.main_settings.zoom = "yes"; 
+            simplemaps_countrymap_mapdata.main_settings.zoom = "yes"; // 1重の綺麗な純正ズームのみを許可
         }
 
         simplemaps_countrymap.hooks.complete = function() {
             setupMapClickHandlers();
             setupMapHoverHandlers(); 
-            injectForcedLabels(); // 🟢 ロード完了時に消えた東京らのラベルを強制召喚！
             switchMode(currentMode);
         };
 
         window.onload = function() {
-            const saved = localStorage.getItem('sankaku_simplemaps_data_v7_inline');
+            const saved = localStorage.getItem('sankaku_simplemaps_data_v7');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -423,34 +428,7 @@
         function saveData() {
             store.currentMode = currentMode;
             store.selectedColor = selectedColor;
-            localStorage.setItem('sankaku_simplemaps_data_v7_inline', JSON.stringify(store));
-        }
-
-        // 🟢 【新機能】ライブラリに抹消された小さな都道府県の文字データをSVG内部に直接強制注入する
-        function injectForcedLabels() {
-            const svgDoc = document.querySelector('#map svg');
-            if (!svgDoc) return;
-
-            // SimpleMapsの座標データから計算した、各県の正確な中心位置リスト
-            const forcedTargets = [
-                { code: "JP13", name: "東京", x: 543, y: 418 },
-                { id: "fukui", code: "JP18", name: "福井", x: 428, y: 395 },
-                { id: "osaka", code: "JP27", name: "大阪", x: 414, y: 444 },
-                { id: "kagawa", code: "JP37", name: "香川", x: 368, y: 459 }
-            ];
-
-            forcedTargets.forEach(target => {
-                // 既に存在していなければテキスト要素を作成
-                if (!svgDoc.querySelector(`.forced_label_${target.code}`)) {
-                    const textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    textNode.setAttribute("x", target.x);
-                    textNode.setAttribute("y", target.y);
-                    textNode.setAttribute("text-anchor", "middle");
-                    textNode.setAttribute("class", `sm_forced_label forced_label_${target.code}`);
-                    textNode.textContent = target.name;
-                    svgDoc.appendChild(textNode);
-                }
-            });
+            localStorage.setItem('sankaku_simplemaps_data_v7', JSON.stringify(store));
         }
 
         function createPaletteGrid() {
@@ -475,9 +453,10 @@
             });
         }
 
+        // 🏠 地図全体の倍率と位置を、最初の初期状態へ一発できれいに戻す処理
         function resetZoomAndPan() {
             if (typeof simplemaps_countrymap !== 'undefined' && simplemaps_countrymap.back) {
-                simplemaps_countrymap.back();
+                simplemaps_countrymap.back(); // コアの純正位置リセット関数をコール
             }
         }
 
@@ -628,7 +607,7 @@
                 };
                 row.oncontextmenu = (e) => {
                     e.preventDefault();
-                    const n = prompt(`「${ov.name}」の筆頭株主名:`, ov.shareholder);
+                    const n = prompt(`「${ov.name}」の筆先株主名:`, ov.shareholder);
                     if(n !== null){ ov.shareholder = n.trim()===""?"ー":n; saveData(); render(); }
                 };
                 overseasList.appendChild(row);
@@ -656,7 +635,7 @@
 
         function resetMapData() {
             if (confirm("本当に【すべてのスタンプ・色塗りデータ】を初期化しますか？")) {
-                localStorage.removeItem('sankaku_simplemaps_data_v7_inline');
+                localStorage.removeItem('sankaku_simplemaps_data_v7');
                 prefList.forEach(p => { store.pref[p.code] = { count: 0, shareholder: "ー" }; store.paintColors[p.code] = ""; });
                 regionList.forEach(r => { store.region[r.id] = { count: 0, shareholder: "ー" }; });
                 store.overseas = [{ id: "vietnam", name: "ベトナムエリア", count: 0, shareholder: "ー", color: "" }];
