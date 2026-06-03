@@ -35,8 +35,8 @@ var simplemaps_countrymap_mapdata={
     label_hover_color: "#ffffff",
     label_size: 16,
     label_font: "Arial",
-    label_display: "all",
-    label_scale: "no",
+    label_display: "auto",
+    label_scale: "yes",
     hide_labels: "no",
     hide_eastern_labels: "no",
    
