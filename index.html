@@ -170,6 +170,20 @@
         }
 
         /* 🎨 カラーパレットシステム */
+        /* 🟢 【追加】地図枠とSVG全体の背景を海のグレーに設定 */
+        .map-section, #map, #map svg, #map svg rect {
+            background-color: #cbd5e1 !important;
+            fill: #cbd5e1 !important;
+            fill-opacity: 1 !important;
+        }
+
+        /* 🟢 【追加】都道府県名（白文字）をくっきり目立たせるドロップシャドウ */
+        #map svg text {
+            fill: #ffffff !important;
+            font-weight: bold !important;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8) !important;
+        }
+        
         .palette-wrapper {
             background: #f8fafc;
             border: 1px solid var(--border-color);
